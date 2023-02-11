@@ -3,3 +3,6 @@ services:
   server:
     image: "debian:stable"
     entrypoint: ["tail", "-f", "/dev/null"]
+  ansiblecm:
+    image: "jmal98/ansiblecm:latest"
+    entrypoint: ["tail", "-f", "/dev/null"]
