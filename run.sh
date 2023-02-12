@@ -109,7 +109,13 @@ docker exec $RUNNING_ANSIBLE_CONTAINER mkdir /etc/ansible
 docker compose -f ./servers/docker-compose.yml cp ./playbooks/hosts ansiblecm:/etc/ansible/hosts
 docker exec $RUNNING_ANSIBLE_CONTAINER chown root:root /etc/ansible/hosts
 rm ./playbooks/hosts
-docker compose -f ./servers/docker-compose.yml cp ./playbooks/*.yml ansiblecm:/tmp/playbook/
+
+# and 8 years later `docker cp` still doesn't support wildcards...
+# https://github.com/moby/moby/issues/7710
+for file in ./playbooks/*; do
+  docker compose -f ./servers/docker-compose.yml cp "$file" "ansiblecm:/tmp/playbook/"
+done
+
 docker exec $RUNNING_ANSIBLE_CONTAINER chown -R root:root /tmp/playbook
 echo "Ansible Control Node is ready"
 echo ""
@@ -124,3 +130,7 @@ echo "Running Ansible Playbooks"
 echo "Installing Prometheus"
 docker exec -t $RUNNING_ANSIBLE_CONTAINER ansible-playbook monitoring.yml --extra-vars="passed_hosts=$(get_container_name ${RUNNING_SERVER_CONTAINERS[0]})"
 echo "Prometheus is running on $(get_container_ip ${RUNNING_SERVER_CONTAINERS[0]}):9090"
+
+echo "Setting up nginx"
+docker exec -t $RUNNING_ANSIBLE_CONTAINER ansible-playbook nginx.yml --extra-vars="passed_hosts=$(get_container_name ${RUNNING_SERVER_CONTAINERS[1]})"
+echo "nginx is running on $(get_container_ip ${RUNNING_SERVER_CONTAINERS[1]}):80"

@@ -1,0 +1,10 @@
+---
+- hosts: "{{ passed_hosts }}"
+  tasks:
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: latest
+    - name: Start nginx
+      shell: nginx
+#      shell: nginx -g daemon on
