@@ -10,6 +10,7 @@ spinner() {
   local pid=$!
   local delay=0.1
   local spinstr='|/-\'
+  stty -echo
   while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
     local temp=${spinstr#?}
     printf " [%c]  " "$spinstr"
@@ -17,7 +18,18 @@ spinner() {
     sleep $delay
     printf "\b\b\b\b\b\b"
   done
+  stty echo
   printf "    \b\b\b\b"
+}
+
+get_container_ip() {
+  if [ -z "$1" ]; then exit 1; fi
+  echo "$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $1)"
+}
+
+get_container_name() {
+  if [ -z "$1" ]; then exit 1; fi
+  echo "$(docker inspect -f '{{.Name}}' $1 | cut -c2-)"
 }
 
 # Main logic
@@ -60,15 +72,24 @@ docker exec $RUNNING_ANSIBLE_CONTAINER chown -R root:root /root/.ssh
 
 for CONTAINER_HASH in "${RUNNING_SERVER_CONTAINERS[@]}"
 do :
-    CONTAINER_NAME=$(docker inspect -f '{{.Name}}' $CONTAINER_HASH | cut -c2-)
-    CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' $CONTAINER_HASH)
+    CONTAINER_NAME=$(get_container_name $CONTAINER_HASH)
+    CONTAINER_IP=$(get_container_ip $CONTAINER_HASH)
 
     echo "Started $CONTAINER_NAME with hash $CONTAINER_HASH available on $CONTAINER_IP"
     echo "Updating $CONTAINER_NAME"
     (docker exec -t $CONTAINER_HASH apt-get update -y > /dev/null) & spinner
     (docker exec -t $CONTAINER_HASH apt-get upgrade -y > /dev/null) & spinner
     echo "Installing dependencies"
-    (docker exec -t $CONTAINER_HASH apt-get install -y ca-certificates gnupg openssh-client openssh-server software-properties-common > /dev/null) & spinner
+    (docker exec -t $CONTAINER_HASH apt-get install -y \
+                                            ca-certificates \
+                                            curl \
+                                            gnupg \
+                                            openssh-client \
+                                            openssh-server \
+                                            software-properties-common \
+                                            sudo \
+                                            wget \
+                                    > /dev/null) & spinner
     (docker exec -t $CONTAINER_HASH apt-get update -y > /dev/null) & spinner
     echo "Starting services $CONTAINER_NAME"
     (docker exec -t $CONTAINER_HASH service ssh start > /dev/null) & spinner
@@ -88,11 +109,18 @@ docker exec $RUNNING_ANSIBLE_CONTAINER mkdir /etc/ansible
 docker compose -f ./servers/docker-compose.yml cp ./playbooks/hosts ansiblecm:/etc/ansible/hosts
 docker exec $RUNNING_ANSIBLE_CONTAINER chown root:root /etc/ansible/hosts
 rm ./playbooks/hosts
+docker compose -f ./servers/docker-compose.yml cp ./playbooks/*.yml ansiblecm:/tmp/playbook/
+docker exec $RUNNING_ANSIBLE_CONTAINER chown -R root:root /tmp/playbook
 echo "Ansible Control Node is ready"
 echo ""
-read -p "Do you wish to test Ansible Control Node connection to all other servers? [y/N] " -n 1 -r
+read -t 10 -p "Do you wish to test Ansible Control Node connection to all other servers? [y/N] " -n 1 -r
 echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
-    docker exec $RUNNING_ANSIBLE_CONTAINER ansible all -m ping -u root
+    docker exec $RUNNING_ANSIBLE_CONTAINER ansible all -m ping
 fi
+
+echo "Running Ansible Playbooks"
+echo "Installing Prometheus"
+docker exec -t $RUNNING_ANSIBLE_CONTAINER ansible-playbook monitoring.yml --extra-vars="passed_hosts=$(get_container_name ${RUNNING_SERVER_CONTAINERS[0]})"
+echo "Prometheus is running on $(get_container_ip ${RUNNING_SERVER_CONTAINERS[0]}):9090"

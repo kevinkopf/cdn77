@@ -1,0 +1,74 @@
+---
+- hosts: "{{ passed_hosts }}"
+  tasks:
+    - name: Create Prometheus data dirs
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /var/lib/prometheus
+        - /etc/prometheus/rules
+        - /etc/prometheus/rules.d
+        - /etc/prometheus/files_sd
+    - name: Get Prometheus remote link
+      shell: curl -s https://api.github.com/repos/prometheus/prometheus/releases/latest | grep browser_download_url | grep linux-amd64 | cut -d '"' -f 4
+      register: prometheus_link
+    - name: Unarchive the Prometheus tar file from github
+      unarchive:
+        src: "{{ prometheus_link.stdout }}"
+        dest: /tmp
+        remote_src: true
+    - name: Get Prometheus directory name
+      shell: curl -s https://api.github.com/repos/prometheus/prometheus/releases/latest | grep name | grep linux-amd64 | cut -d '"' -f 4 | sed -e "s/.tar.gz$//"
+      register: directory_name
+    - name: Move Prometheus binaries to /usr/local/bin
+      copy:
+        src: "{{ item }}"
+        dest: /usr/local/bin/
+        remote_src: true
+        mode: preserve
+      loop:
+        - "/tmp/{{ directory_name.stdout }}/prometheus"
+        - "/tmp/{{ directory_name.stdout }}/promtool"
+    - name: Move Prometheus configs to /etc/prometheus
+      copy:
+        src: "{{ item }}"
+        dest: /etc/prometheus
+        remote_src: true
+        mode: preserve
+      loop:
+        - "/tmp/{{ directory_name.stdout }}/prometheus.yml"
+        - "/tmp/{{ directory_name.stdout }}/consoles/"
+        - "/tmp/{{ directory_name.stdout }}/console_libraries/"
+    - name: Add a system group for Prometheus
+      group:
+        name: prometheus
+        state: present
+        system: true
+    - name: Add a user for Prometheus
+      user:
+        name: prometheus
+        groups: prometheus
+        system: true
+        shell: /sbin/nologin
+        state: present
+    - name: Set up permissions for Prometheus user
+      file:
+        path: "{{ item }}"
+        owner: prometheus
+        group: prometheus
+        recurse: true
+      loop:
+        - /etc/prometheus
+        - /var/lib/prometheus
+    - name: Run Prometheus
+      # Ideally, I'd create a systemd file to be able to run with systemctl.
+      # However, Docker containers are started without systemd, hence I just run Prometheus through CLI.
+      become: true
+      become_user: prometheus
+      shell: |
+        nohup /usr/local/bin/prometheus \
+        --config.file=/etc/prometheus/prometheus.yml \
+        --storage.tsdb.path=/var/lib/prometheus \
+        --web.console.templates=/etc/prometheus/consoles \
+        --web.console.libraries=/etc/prometheus/console_libraries > /home/prometheus/prometheus.log 2>&1 &
