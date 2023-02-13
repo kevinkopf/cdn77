@@ -1,0 +1,13 @@
+name: do
+help: CDN77 Test Assignment
+version: 0.1.0
+
+commands:
+- name: deploy
+  help: Deploy the servers
+
+- name: redeploy
+  help: Stop everything and redeploy
+
+- name: stop
+  help: Stop everything and remove the servers

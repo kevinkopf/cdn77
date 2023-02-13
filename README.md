@@ -1,17 +1,34 @@
 # CDN77 Test Assignment
 
+### Requirements
+The scripts use Bashly framework, hence you are expected to have Bash 4 to run the generated script.
+You are also expected to have Docker installed on your machine, along with Compose.
+
 ### Usage
-To deploy the whole infrastructure, simply execute
+First, you need to build the bash script from the sources. For that, run
+
 ```bash
-./run.sh
+./build
+```
+
+This creates a script named `do`.  To deploy the whole infrastructure, simply execute
+
+```bash
+./do deploy
 ```
 
 This will create a set of containers and an Ansible control machine.
-The script will configure the containers, treated as separate servers, to communicate via ssh between each other.
+The script will configure the containers, treated as separate servers, to communicate via ssh between each other, and run Ansible Playbooks.
 
 To clean up everything, simply run
 ```bash
-./stop.sh
+./do stop
+```
+
+There's also a redeploy command, which simply calls `stop` and `deploy`:
+
+```bash
+./do redeploy
 ```
 
 ### Initial Assignment

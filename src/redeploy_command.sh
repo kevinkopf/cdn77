@@ -1,0 +1,2 @@
+./do stop
+./do deploy
