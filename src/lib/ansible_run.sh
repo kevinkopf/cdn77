@@ -1,6 +1,7 @@
 function ansible_run() {
   local PLAYBOOK
   local HOSTS
+  local EXTRA_VARS
 
   while :; do
     case $1 in
@@ -16,10 +17,18 @@ function ansible_run() {
         fi
         shift
       ;;
+      -e|--extra)
+        if [ -z "$EXTRA_VARS" ]; then
+          EXTRA_VARS=$2
+        else
+          EXTRA_VARS="${EXTRA_VARS},$2"
+        fi
+        shift
+      ;;
       *) break
     esac
     shift
   done
 
-  docker exec -t "$(get_ansible_container)" ansible-playbook "$PLAYBOOK" --extra-vars="passed_hosts=$HOSTS"
+  docker exec -t "$(get_ansible_container)" ansible-playbook "$PLAYBOOK" --extra-vars="passed_hosts=$HOSTS $EXTRA_VARS"
 }

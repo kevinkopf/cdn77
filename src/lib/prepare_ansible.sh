@@ -1,4 +1,7 @@
 function prepare_ansible() {
+  # Copy over the hosts file for Ansible into the container.
+  # I copy it over and not map it through volumes because I want to chown it to root
+  # And I don't want permission clashing on localhost.
   echo "Configuring Ansible Control Node"
   docker compose -f ./servers/docker-compose.yml cp ./servers/.ssh ansiblecm:/root/.ssh
   docker exec $1 chown -R root:root /root/.ssh
@@ -14,4 +17,7 @@ function prepare_ansible() {
   done
 
   docker exec $1 chown -R root:root /tmp/playbook
+
+  # Test the connection from Ansible to other servers
+  docker exec $RUNNING_ANSIBLE_CONTAINER ansible all -m ping
 }

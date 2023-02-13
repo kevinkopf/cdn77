@@ -1,0 +1,17 @@
+---
+- hosts: "{{ passed_hosts }}"
+  tasks:
+    - name: Prepare the caching directory
+      file:
+        path: /usr/share/nginx/cache
+#        owner: "www-data"
+#        group:
+        state: directory
+    - name: Copy template for caching reverse proxy
+      template:
+        src: templates/caching_reverse_proxy.conf
+        dest: /etc/nginx/nginx.conf
+      vars:
+        nginx_host: "{{ nginx_host }}"
+    - name: Reload nginx
+      shell: nginx -s reload

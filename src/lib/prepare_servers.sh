@@ -32,4 +32,8 @@ function prepare_servers() {
       echo "$CONTAINER_NAME is ready"
       echo "$CONTAINER_NAME ansible_host=$CONTAINER_IP" >> ./playbooks/hosts
   done
+
+  # And now we can connect over ssh between (containers) SERVERS!
+  # I know that "StrictHostKeyChecking no" in .ssh/config is not secure, but it will do for this demo.
+  # Containers are isolated on local machine anyway, so no worries.
 }
