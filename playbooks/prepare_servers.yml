@@ -1,0 +1,14 @@
+---
+- hosts: all
+  tasks:
+    - name: Install the basic packages for all the servers
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - software-properties-common
+          - sudo
+          - wget
+        update_cache: true

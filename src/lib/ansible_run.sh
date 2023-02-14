@@ -2,6 +2,7 @@ function ansible_run() {
   local PLAYBOOK
   local HOSTS
   local EXTRA_VARS
+  local PARAM=()
 
   while :; do
     case $1 in
@@ -11,7 +12,7 @@ function ansible_run() {
       ;;
       -h|--host)
         if [ -z "$HOSTS" ]; then
-          HOSTS=$2
+          HOSTS="passed_hosts=$2"
         else
           HOSTS="${HOSTS},$2"
         fi
@@ -30,5 +31,9 @@ function ansible_run() {
     shift
   done
 
-  docker exec -t "$(get_ansible_container)" ansible-playbook "$PLAYBOOK" --extra-vars="passed_hosts=$HOSTS $EXTRA_VARS"
+  if [ -n "$EXTRA_VARS" ] || [ -n "$HOSTS" ]; then
+    PARAM=(--extra-vars="$HOSTS $EXTRA_VARS")
+  fi
+
+  docker exec -t "$(get_ansible_container)" ansible-playbook "$PLAYBOOK" "${PARAM[@]}"
 }

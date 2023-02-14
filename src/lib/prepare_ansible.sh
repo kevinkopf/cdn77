@@ -20,4 +20,5 @@ function prepare_ansible() {
 
   # Test the connection from Ansible to other servers
   docker exec $RUNNING_ANSIBLE_CONTAINER ansible all -m ping
+  green "Ansible Control Node is ready"
 }
