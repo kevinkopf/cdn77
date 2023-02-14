@@ -22,9 +22,8 @@ function prepare_servers() {
                                                 > /dev/null) & spinner
       (docker exec -t $CONTAINER_HASH apt-get update -y > /dev/null) & spinner
       echo "Starting services $CONTAINER_NAME"
-#      (docker exec -t $CONTAINER_HASH service ssh start > /dev/null) & spinner
       docker exec -t $CONTAINER_HASH service ssh start
-      (docker exec $CONTAINER_HASH chown -R root:root /root/.ssh > /dev/null) & spinner
+      docker exec $CONTAINER_HASH chown -R root:root /root/.ssh
       echo "$CONTAINER_NAME is ready"
   done
   # And now we can connect over ssh between (containers) SERVERS!
