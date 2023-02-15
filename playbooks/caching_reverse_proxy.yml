@@ -1,20 +1,32 @@
 ---
 - hosts: "{{ passed_hosts }}"
   tasks:
+    - name: Install cron
+      apt:
+        name: libnginx-mod-http-lua
     - name: Prepare the caching directory
       file:
         path: /usr/share/nginx/cache
-#        owner: "www-data"
-#        group:
         state: directory
     - name: Copy template for caching reverse proxy
       template:
-        src: templates/caching_reverse_proxy.conf
+        src: caching_reverse_proxy/nginx.conf
         dest: /etc/nginx/nginx.conf
       vars:
         nginx_host: "{{ nginx_host }}"
+    - name: Copy metrics template to nginx
+      copy:
+        src: caching_reverse_proxy/template.txt
+        dest: /usr/share/nginx/html/template.txt
+    - name: Copy over the generating script
+      copy:
+        src: caching_reverse_proxy/generate.sh
+        dest: /usr/local/bin/generate.sh
+        mode: 0755
+    - name: Generate the initial index.html
+      shell: /usr/local/bin/generate.sh
     - name: Set up SSL
-      # Normally, I'd use letsencrypt on production, but since it's an isolated Docker container, this will suffice
+#       Normally, I'd use letsencrypt on production, but since it's an isolated Docker container, this will suffice
       shell: openssl req -x509 -out /etc/nginx/localhost.crt -keyout /etc/nginx/localhost.key -newkey rsa:2048 -nodes -sha256 -subj '/CN=localhost' -extensions EXT -config <(printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
       args:
         executable: /bin/bash

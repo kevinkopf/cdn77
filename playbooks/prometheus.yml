@@ -61,9 +61,15 @@
       loop:
         - /etc/prometheus
         - /var/lib/prometheus
+    - name: Copy Prometheus config
+      template:
+        src: prometheus/prometheus.yml
+        dest: /etc/prometheus/prometheus.yml
+      vars:
+        reverse_proxy: "{{ reverse_proxy }}"
     - name: Run Prometheus
-      # Ideally, I'd create a systemd file to be able to run with systemctl.
-      # However, Docker containers are started without systemd, hence I just run Prometheus through CLI.
+#       Ideally, I'd create a systemd file to be able to run with systemctl.
+#       However, Docker containers are started without systemd, hence I just run Prometheus through CLI.
       become: true
       become_user: prometheus
       shell: |

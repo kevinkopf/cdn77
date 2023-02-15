@@ -40,19 +40,24 @@ green "Running Ansible Playbooks"
 green "Prepare the server dependencies"
 ansible_run -p prepare_servers.yml
 
-green "Installing Prometheus"
-ansible_run -p monitoring.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[0]})"
+INDEX_PROMETHEUS=0
+INDEX_UPSTREAM_NGINX=1
+INDEX_REVERSE_NGINX=2
+INDEX_GRAFANA=3
 
 green "Setting up nginx"
-ansible_run -p nginx.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[1]})" -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[2]})"
+ansible_run -p nginx.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_UPSTREAM_NGINX]})" -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})"
 
 green "Setting up caching reverse nginx"
-ansible_run -p caching_reverse_proxy.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[2]})" -e "nginx_host=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[1]})"
+ansible_run -p caching_reverse_proxy.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})" -e "nginx_host=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_UPSTREAM_NGINX]})"
+
+green "Installing Prometheus"
+ansible_run -p prometheus.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]})" -e "reverse_proxy=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})"
 
 green "Setting up Grafana"
-ansible_run -p grafana.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[3]})"
+ansible_run -p grafana.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]})"
 
-echo "Prometheus http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[0]}):9090"
-echo "Upstream nginx http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[1]})"
-echo "Caching reverse proxy nginx https://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[2]})"
-echo "Grafana http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[3]}):3000"
+echo "Prometheus http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]}):9090"
+echo "Upstream nginx http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_UPSTREAM_NGINX]})"
+echo "Caching reverse proxy nginx https://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})"
+echo "Grafana http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]}):3000"

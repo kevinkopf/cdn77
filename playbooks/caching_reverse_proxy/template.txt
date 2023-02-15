@@ -1,0 +1,9 @@
+# HELP response_time Some random number in response time.
+# TYPE response_time gauge
+response_time %ONE%
+# HELP request_quantity Some random number in request quantity.
+# TYPE request_quantity gauge
+request_quantity %TWO%
+# HELP and_something_else And some random number for something else.
+# TYPE and_something_else gauge
+and_something_else %THREE%
