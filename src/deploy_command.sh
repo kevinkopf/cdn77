@@ -55,7 +55,8 @@ green "Installing Prometheus"
 ansible_run -p prometheus.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]})" -e "reverse_proxy=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})"
 
 green "Setting up Grafana"
-ansible_run -p grafana.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]})"
+ansible_run -p grafana.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]})" -e "prometheus_ip=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]})"
+#ansible_run -p grafana.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]})" -e "grafana_host=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]})" -e "prometheus_ip=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]})"
 
 echo "Prometheus http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]}):9090"
 echo "Upstream nginx http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_UPSTREAM_NGINX]})"

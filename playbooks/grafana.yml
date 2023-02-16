@@ -1,6 +1,9 @@
 ---
 - hosts: "{{ passed_hosts }}"
   tasks:
+    - name: Install curl
+      apt:
+        name: curl
     - name: Import Grafana GPG key
       shell: wget -q -O /usr/share/keyrings/grafana.key https://apt.grafana.com/gpg.key
     - name: Import Grafana repository
@@ -12,3 +15,34 @@
         update_cache: true
     - name: Start Grafana
       shell: nohup grafana-server -homepath /usr/share/grafana web > /var/log/grafana.log 2>&1 &
+    - name: Copy over Dashboard config file
+      template:
+        src: grafana/datasource.json
+        dest: /tmp
+      vars:
+        prometheus_ip: "{{ prometheus_ip }}"
+    - name: Add Prometheus Datasource to Grafana
+      shell: |
+        curl http://localhost:3000/api/datasources --user admin:admin -X POST -H "Content-Type: application/json" --data "@/tmp/datasource.json"
+      register: result
+      until: "result is not failed"
+      ignore_errors: yes
+      retries: 10
+      delay: 5
+    - name: Copy over Dashboard config file
+      template:
+        src: grafana/dashboard.json
+        dest: /tmp
+      vars:
+        prometheus_uid: "{{ (result.stdout | from_json).datasource.uid }}"
+    - name: Add the panels to Grafana reflecting the data
+      shell: |
+        curl http://localhost:3000/api/dashboards/db --user admin:admin -X POST -H "Content-Type: application/json" --data "@/tmp/dashboard.json"
+      register: result
+      until: "result is not failed"
+      ignore_errors: yes
+      retries: 10
+      delay: 5
+    - name: Debug
+      debug:
+        msg: "{{ result.stdout }}"

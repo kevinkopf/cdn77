@@ -22,7 +22,7 @@ function ansible_run() {
         if [ -z "$EXTRA_VARS" ]; then
           EXTRA_VARS=$2
         else
-          EXTRA_VARS="${EXTRA_VARS},$2"
+          EXTRA_VARS="${EXTRA_VARS} $2"
         fi
         shift
       ;;

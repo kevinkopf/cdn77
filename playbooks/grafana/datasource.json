@@ -1,0 +1,8 @@
+{
+  "name": "Prometheus",
+  "type": "prometheus",
+  "access": "proxy",
+  "url": "http://{{ prometheus_ip }}:9090",
+  "basicAuth": false,
+  "isDefault": true
+}
