@@ -1,0 +1,22 @@
+---
+- hosts: "{{ passed_hosts }}"
+  tasks:
+    - name: Set up Zookeeper
+      copy:
+        src: kafka/zookeeper.properties
+        dest: /opt/kafka/config/zookeeper.properties
+    - name: Add Kafka servers to Zookeeper
+      lineinfile:
+        dest: /opt/kafka/config/zookeeper.properties
+        line: "server.{{ idx }}={{ item }}:2888:3888"
+      loop: "{{ kafkas.split(',') }}"
+      loop_control:
+        index_var: idx
+    - name: Create myid file
+      lineinfile:
+        dest: /tmp/zookeeper/myid
+        line: "1"
+        create: true
+    - name: Run Kafka
+      shell: |
+        nohup /opt/kafka/bin/zookeeper-server-start.sh /opt/kafka/config/zookeeper.properties & > /var/log/zookeeper.log

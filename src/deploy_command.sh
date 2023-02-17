@@ -1,19 +1,19 @@
 # Quick Config
-MIN_CONTAINERS=4
-MAX_CONTAINERS=4
+MIN_CONTAINERS=8
+MAX_CONTAINERS=8
 
 cyan_bold "I am going to run Debian in multiple Docker containers."
 cyan_bold "Now think of a number between $MIN_CONTAINERS and $MAX_CONTAINERS and type it in."
 cyan_bold "That's how many containers I'm going to run."
 cyan_bold "Leave blank for random number of containers."
 
-read NUM_CONTAINERS
-
-if ! [[ "$NUM_CONTAINERS" =~ ^[0-9]+$ ]] ; then
+if read -t 1 NUM_CONTAINERS; then
+  NUM_CONTAINERS=$MAX_CONTAINERS
+elif ! [[ "$NUM_CONTAINERS" =~ ^[0-9]+$ ]] ; then
    NUM_CONTAINERS=$(shuf -i $MIN_CONTAINERS-$MAX_CONTAINERS -n 1)
 elif [ "$NUM_CONTAINERS" -gt "$MAX_CONTAINERS" ]; then
     NUM_CONTAINERS=$MIN_CONTAINERS
-elif [ "$NUM_CONTAINERS" -lt "$MIN_CONTAINERS" ]; then
+elif [ "$NUM_CONTAINERS" -lt "$MIN_CONTAINERS" ] || [ $? -eq 0 ]; then
     NUM_CONTAINERS=$MAX_CONTAINERS
 fi
 
@@ -44,19 +44,49 @@ INDEX_PROMETHEUS=0
 INDEX_UPSTREAM_NGINX=1
 INDEX_REVERSE_NGINX=2
 INDEX_GRAFANA=3
+INDEX_KAFKA_ONE=4
+INDEX_KAFKA_TWO=5
+INDEX_KAFKA_THR=6
+INDEX_ZOOKEEPER=7
 
 green "Setting up nginx"
-ansible_run -p nginx.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_UPSTREAM_NGINX]})" -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})"
+ansible_run -p nginx.yml \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_UPSTREAM_NGINX]})" \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})"
 
 green "Setting up caching reverse nginx"
-ansible_run -p caching_reverse_proxy.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})" -e "nginx_host=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_UPSTREAM_NGINX]})"
+ansible_run -p caching_reverse_proxy.yml \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})" \
+  -e "nginx_host=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_UPSTREAM_NGINX]})"
 
 green "Installing Prometheus"
-ansible_run -p prometheus.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]})" -e "reverse_proxy=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})"
+ansible_run -p prometheus.yml \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]})" \
+  -e "reverse_proxy=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_REVERSE_NGINX]})"
 
 green "Setting up Grafana"
-ansible_run -p grafana.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]})" -e "prometheus_ip=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]})"
-#ansible_run -p grafana.yml -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]})" -e "grafana_host=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]})" -e "prometheus_ip=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]})"
+ansible_run -p grafana.yml \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_GRAFANA]})" \
+  -e "prometheus_ip=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]})"
+
+green "Prepare Kafka on Kafka and Zookeeper server"
+ansible_run -p prepare_kafka.yml \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_KAFKA_ONE]})" \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_KAFKA_TWO]})" \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_KAFKA_THR]})" \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_ZOOKEEPER]})"
+
+green "Set up Zookeeper"
+ansible_run -p zookeeper.yml \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_ZOOKEEPER]})" \
+  -e "kafkas=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_KAFKA_ONE]}),$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_KAFKA_TWO]}),$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_KAFKA_THR]})"
+
+green "Set up Kafka servers"
+ansible_run -p kafka.yml \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_KAFKA_ONE]})" \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_KAFKA_TWO]})" \
+  -h "$(get_container_name ${RUNNING_SERVER_CONTAINERS[$INDEX_KAFKA_THR]})" \
+  -e "zookeeper_ip=$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_ZOOKEEPER]})"
 
 echo "Prometheus http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_PROMETHEUS]}):9090"
 echo "Upstream nginx http://$(get_container_ip ${RUNNING_SERVER_CONTAINERS[$INDEX_UPSTREAM_NGINX]})"

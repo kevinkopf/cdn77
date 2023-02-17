@@ -43,6 +43,3 @@
       ignore_errors: yes
       retries: 10
       delay: 5
-    - name: Debug
-      debug:
-        msg: "{{ result.stdout }}"

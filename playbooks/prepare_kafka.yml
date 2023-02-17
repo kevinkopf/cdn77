@@ -1,0 +1,21 @@
+---
+- hosts: "{{ passed_hosts }}"
+  vars:
+    kafka_version: 3.4.0
+    kafka_dir: kafka_2.13-3.4.0
+  tasks:
+    - name: Download Kafka
+      unarchive:
+        src: "https://mirror.cogentco.com/pub/apache/kafka/{{ kafka_version }}/{{ kafka_dir }}.tgz"
+        dest: /opt
+        remote_src: true
+    - name: Check dir exists
+      stat:
+        path: "/opt/{{ kafka_dir }}"
+      register: check
+    - name: Copy Kafka
+      shell: "mv /opt/{{ kafka_dir }} /opt/kafka"
+      when: check.stat.exists
+    - name: Install jre
+      apt:
+        name: default-jre

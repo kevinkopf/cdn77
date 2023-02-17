@@ -1,0 +1,18 @@
+---
+- hosts: "{{ passed_hosts }}"
+  tasks:
+    - name: Get host IP _reliably_
+      shell: |
+        tail -1 /etc/hosts | tr "\t" " " | cut -d ' ' -f1
+      register: host_ip
+    - name: Set up Kafka Broker
+      template:
+        src: kafka/server.properties
+        dest: /opt/kafka/config/server.properties
+      vars:
+        kafka_id: "{{ ansible_play_hosts.index(inventory_hostname) }}"
+        kafka_ip: "{{ host_ip.stdout }}"
+        zookeeper_ip: "{{ zookeeper_ip }}"
+    - name: Run Kafka
+      shell: |
+        /opt/kafka/bin/kafka-server-start.sh -daemon /opt/kafka/config/server.properties > /var/log/kafka.log
